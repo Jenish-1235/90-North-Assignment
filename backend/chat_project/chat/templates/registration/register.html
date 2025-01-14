@@ -1,0 +1,82 @@
+<!-- backend/chat_project/chat/templates/registration/register.html -->
+ {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - Enfund.io</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <style>
+        /* Inline styles for simplicity */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #ecf0f1;
+        }
+        .registration-form {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 400px;
+        }
+        .registration-form h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .registration-form input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .registration-form button {
+            width: 100%;
+            padding: 10px;
+            background-color: #2980b9;
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .registration-form button:hover {
+            background-color: #3498db;
+        }
+        .errorlist {
+            color: red;
+            margin-bottom: 10px;
+            list-style: none;
+            padding-left: 0;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 10px;
+            color: #2980b9;
+        }
+        .login-link a {
+            text-decoration: none;
+            color: #2980b9;
+        }
+        .login-link a:hover {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="registration-form">
+        <h2>Register</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Register</button>
+        </form>
+        <p class="login-link">Already have an account? <a href="{% url 'login' %}">Login here</a>.</p>
+    </div>
+</body>
+</html>

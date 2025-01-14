@@ -1,0 +1,286 @@
+<!-- backend/chat_project/chat/templates/chat/chat_home.html -->
+ {% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat - Enfund.io</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+    <style>
+        /* Inline styles for simplicity */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar a {
+            color: #ecf0f1;
+            text-decoration: none;
+            margin-left: 15px;
+            font-size: 16px;
+        }
+        .container {
+            display: flex;
+            margin-top: 60px; /* Height of navbar */
+            min-height: calc(100vh - 120px); /* Adjust for navbar and footer */
+        }
+        .left-menu {
+            width: 20%;
+            background-color: #34495e;
+            color: #ecf0f1;
+            padding: 20px;
+            transition: width 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+        .left-menu.collapsed {
+            width: 0;
+            padding: 20px 0;
+        }
+        .menu-button {
+            background-color: #2980b9;
+            border: none;
+            color: #ecf0f1;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-bottom: 15px;
+            width: 100%;
+            text-align: left;
+            border-radius: 4px;
+        }
+        .menu-list {
+            list-style: none;
+        }
+        .menu-list li {
+            margin: 15px 0;
+        }
+        .menu-list li a {
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 18px;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+        .menu-list li a:hover {
+            color: #3498db;
+        }
+        .main-content {
+            flex: 1;
+            background-color: #ffffff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .chat-window {
+            flex: 1;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            background-color: #f1f1f1;
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .message .sender {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .message .content {
+            margin-left: 10px;
+            color: #7f8c8d;
+        }
+        .message .timestamp {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-left: 10px;
+        }
+        .input-group {
+            display: flex;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px 0 0 4px;
+            outline: none;
+            font-size: 16px;
+        }
+        .input-group button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #2980b9;
+            color: #ffffff;
+            cursor: pointer;
+            border-radius: 0 4px 4px 0;
+            font-size: 16px;
+        }
+        .input-group button:hover {
+            background-color: #3498db;
+        }
+        .footer {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            .right-panel {
+                display: none; /* Hide right panel on very small screens */
+            }
+            .container {
+                flex-direction: column;
+            }
+            .left-menu, .main-content {
+                width: 100%;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fixed Navbar -->
+    <nav class="navbar">
+        <h1>Enfund.io Chat</h1>
+        <div>
+            <span>Logged in as {{ request.user.username }}</span>
+            <a href="{% url 'logout' %}">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Collapsible Left Menu: List of Users -->
+        <aside class="left-menu" id="leftMenu">
+            <button id="toggleMenu" class="menu-button">☰ Users</button>
+            <ul class="menu-list">
+                {% for user in users %}
+                    <li><a href="#" onclick="startChat('{{ user.username }}')">{{ user.username }}</a></li>
+                {% empty %}
+                    <li>No other users available.</li>
+                {% endfor %}
+            </ul>
+        </aside>
+
+        <!-- Main Content Area: Chat Interface -->
+        <main class="main-content">
+            <div class="chat-window" id="chatWindow">
+                <!-- Chat messages will appear here -->
+            </div>
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Type your message here..." disabled />
+                <button onclick="sendMessage()" disabled>Send</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 Enfund.io. All rights reserved.</p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Collapsible Left Menu
+        document.getElementById('toggleMenu').addEventListener('click', function() {
+            const leftMenu = document.getElementById('leftMenu');
+            leftMenu.classList.toggle('collapsed');
+        });
+
+        let currentReceiver = null;
+        let socket = null;
+
+        function startChat(username) {
+            currentReceiver = username;
+            document.getElementById('chatWindow').innerHTML = ''; // Clear previous messages
+            document.getElementById('messageInput').disabled = true;
+            document.querySelector('.input-group button').disabled = true;
+
+            // Close existing socket if open
+            if (socket) {
+                socket.close();
+            }
+
+            // Initialize WebSocket connection
+            const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            socket = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${username}/`);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection established.');
+                document.getElementById('messageInput').disabled = false;
+                document.querySelector('.input-group button').disabled = false;
+                // Optionally, fetch and display old messages here
+            };
+
+            socket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                const message = data['message'];
+                const sender = data['sender_username'];
+                const timestamp = new Date().toLocaleTimeString();
+
+                displayMessage(sender, message, timestamp);
+            };
+
+            socket.onclose = function() {
+                console.log('WebSocket connection closed.');
+                document.getElementById('messageInput').disabled = true;
+                document.querySelector('.input-group button').disabled = true;
+            };
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (message && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    'message': message
+                }));
+                input.value = '';
+            }
+        }
+
+        function displayMessage(sender, message, timestamp) {
+            const chatWindow = document.getElementById('chatWindow');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+
+            const senderSpan = document.createElement('span');
+            senderSpan.classList.add('sender');
+            senderSpan.textContent = sender === '{{ request.user.username }}' ? 'You' : sender;
+
+            const contentSpan = document.createElement('span');
+            contentSpan.classList.add('content');
+            contentSpan.textContent = message;
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = timestamp;
+
+            messageDiv.appendChild(senderSpan);
+            messageDiv.appendChild(contentSpan);
+            messageDiv.appendChild(timestampSpan);
+
+            chatWindow.appendChild(messageDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Auto-scroll to latest message
+        }
+    </script>
+</body>
+</html>
